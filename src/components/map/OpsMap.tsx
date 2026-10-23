@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Circle, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { Circle, MapContainer, useMap, useMapEvents } from 'react-leaflet';
 import type { LatLngBoundsExpression } from 'leaflet';
 import { CloudOff, Layers, Wind } from 'lucide-react';
 import { INDIA_VIEW, regionById } from '../../data/regions';
@@ -9,6 +9,7 @@ import { AssetLayer } from './AssetLayer';
 import { ClusterLayer } from './ClusterLayer';
 import { FireSpreadLayer } from './FireSpreadLayer';
 import { MapLegend } from './MapLegend';
+import { VectorBasemap } from './VectorBasemap';
 
 export interface MapFocus {
   key: string;
@@ -16,15 +17,6 @@ export interface MapFocus {
   center?: [number, number];
   zoom?: number;
 }
-
-/**
- * Basemap: standard OpenStreetMap raster tiles (keyless). They are toned per theme in
- * index.css (`.agn-map .leaflet-tile-pane`) — warm and desaturated in light mode, dimmed and
- * inverted in dark mode — so observation markers stay the visual focus. The tile imagery
- * itself is unmodified OSM data and carries OSM attribution.
- */
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 /** Leaflet measures its container once; re-measure whenever the React layout resizes it. */
 function ResizeHandler() {
@@ -124,16 +116,8 @@ export function OpsMap({
         className="agn-map h-full w-full"
         worldCopyJump
       >
-        <TileLayer
-          attribution={ATTRIBUTION}
-          url={TILE_URL}
-          subdomains={['a', 'b', 'c']}
-          maxZoom={19}
-          eventHandlers={{
-            tileerror: () => setTileErrors((n) => n + 1),
-            load: () => setTileErrors(0),
-          }}
-        />
+        {/* Vector basemap with India's official boundary — see basemapStyle.ts */}
+        <VectorBasemap onError={() => setTileErrors((n) => n + 1)} onLoad={() => setTileErrors(0)} />
         <ResizeHandler />
         <RegionFitter regionId={regionId} />
         {showAssets && <AssetLayer assets={assets} highlightId={highlightAssetId} />}

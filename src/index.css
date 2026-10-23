@@ -186,15 +186,7 @@
   background: rgb(var(--surface-2));
   font-family: inherit;
 }
-/* Tone the OSM tiles to the theme: calm, low-saturation context behind the markers. */
-.agn-map .leaflet-tile-pane {
-  filter: grayscale(0.92) sepia(0.14) brightness(1.06) contrast(0.86);
-  opacity: 0.92;
-}
-html.dark .agn-map .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) grayscale(0.9) brightness(0.72) contrast(0.88);
-  opacity: 1;
-}
+/* The vector basemap is styled per theme in components/map/basemapStyle.ts. */
 .agn-map .leaflet-control-zoom {
   border: 1px solid rgb(var(--line)) !important;
   border-radius: 8px;
