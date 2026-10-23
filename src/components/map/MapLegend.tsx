@@ -45,6 +45,21 @@ export function MapLegend() {
             <Row><span className="agn-legend-dot agn-band-high agn-st-unconfirmed" />Unconfirmed — hollow</Row>
           </div>
           <div className="space-y-1.5">
+            <div className="text-xs font-medium text-fg">Fire spread & wind</div>
+            <Row>
+              <span className="h-0.5 w-3 border-t-2 border-dashed border-[#f97316]" />
+              3h Projected reach (amber)
+            </Row>
+            <Row>
+              <span className="h-0.5 w-3 border-t-2 border-dashed border-[#ef4444]" />
+              6h Projected reach (crimson)
+            </Row>
+            <Row>
+              <span className="font-mono text-2xs text-accent">↗ 18 km/h</span>
+              Live downwind vector
+            </Row>
+          </div>
+          <div className="space-y-1.5">
             <div className="text-xs font-medium text-fg">Mapped assets</div>
             {(Object.keys(ASSET_TYPE_META) as AssetType[]).map((t) => (
               <Row key={t}>

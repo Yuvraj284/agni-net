@@ -98,7 +98,7 @@ export function ClusterLayer({
         marker.bindTooltip(
           `<div><span class="agn-tip-id agn-tip-title">${escapeHtml(alert.id)}</span>` +
             ` <span class="agn-tip-muted">· P ${alert.score.score.toFixed(1)} · ${escapeHtml(STATUS_META[alert.verification.status].label)}</span><br/>` +
-            `<span class="agn-tip-id">${escapeHtml(o.id)}</span> <span class="agn-tip-muted">${escapeHtml(o.satellite)} ${o.instrument} · ${escapeHtml(describeConfidence(o.confidence))}</span><br/>` +
+            `<span class="agn-tip-id">${escapeHtml(o.id)}</span> <span class="agn-tip-muted">${escapeHtml(o.satellite)} ${escapeHtml(o.instrument)} · ${escapeHtml(describeConfidence(o.confidence))}</span><br/>` +
             `<span class="agn-tip-muted">${escapeHtml(formatDateTime(o.observedAt))}</span></div>`,
           { direction: 'top', offset: [0, -8] },
         );

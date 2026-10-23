@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Circle, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import type { LatLngBoundsExpression } from 'leaflet';
-import { CloudOff, Layers } from 'lucide-react';
+import { CloudOff, Layers, Wind } from 'lucide-react';
 import { INDIA_VIEW, regionById } from '../../data/regions';
 import type { Asset, EnrichedAlert, RegionId } from '../../types';
 import type { Bounds } from '../../state/types';
 import { AssetLayer } from './AssetLayer';
 import { ClusterLayer } from './ClusterLayer';
+import { FireSpreadLayer } from './FireSpreadLayer';
 import { MapLegend } from './MapLegend';
 
 export interface MapFocus {
@@ -108,6 +109,7 @@ export function OpsMap({
   className?: string;
 }) {
   const [showAssets, setShowAssets] = useState(true);
+  const [showSpread, setShowSpread] = useState(true);
   const [tileErrors, setTileErrors] = useState(0);
   const selectedVisible = selectedAlert && alerts.some((a) => a.id === selectedAlert.id);
   const observationCount = alerts.reduce((s, a) => s + a.observations.length, 0);
@@ -135,6 +137,7 @@ export function OpsMap({
         <ResizeHandler />
         <RegionFitter regionId={regionId} />
         {showAssets && <AssetLayer assets={assets} highlightId={highlightAssetId} />}
+        {selectedAlert && selectedVisible && showSpread && <FireSpreadLayer alert={selectedAlert} />}
         {selectedAlert && selectedVisible && (
           <Circle
             center={selectedAlert.centroid}
@@ -149,8 +152,28 @@ export function OpsMap({
         {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}
       </MapContainer>
 
-      {/* Layer control */}
-      <div className="absolute right-3 top-3 z-[500]">
+      {/* Layer controls */}
+      <div className="absolute right-3 top-3 z-[500] flex flex-wrap gap-2">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showSpread}
+          onClick={() => setShowSpread((v) => !v)}
+          className="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface pl-2.5 pr-2 text-13 text-fg shadow-raised transition-colors hover:bg-surface-2"
+          title="Toggle wind vector and 3h/6h projected fire spread"
+        >
+          <Wind className="h-3.5 w-3.5 text-accent" aria-hidden />
+          Wind & spread
+          <span
+            className={`relative ml-1 inline-flex h-4 w-7 items-center rounded-full transition-colors ${showSpread ? 'bg-accent' : 'bg-line-strong'}`}
+            aria-hidden
+          >
+            <span
+              className={`h-3 w-3 rounded-full bg-surface shadow-card transition-transform ${showSpread ? 'translate-x-3.5' : 'translate-x-0.5'}`}
+            />
+          </span>
+        </button>
+
         <button
           type="button"
           role="switch"
