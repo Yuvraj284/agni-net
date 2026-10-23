@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Circle, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import type { LatLngBoundsExpression } from 'leaflet';
+import { Circle, MapContainer, useMap, useMapEvents } from 'react-leaflet';
+import { latLng, type LatLng, type LatLngBoundsExpression, type Map as LeafletMap } from 'leaflet';
 import { CloudOff, Layers, Wind } from 'lucide-react';
 import { INDIA_VIEW, regionById } from '../../data/regions';
 import type { Asset, EnrichedAlert, RegionId } from '../../types';
@@ -9,6 +9,7 @@ import { AssetLayer } from './AssetLayer';
 import { ClusterLayer } from './ClusterLayer';
 import { FireSpreadLayer } from './FireSpreadLayer';
 import { MapLegend } from './MapLegend';
+import { VectorBasemap } from './VectorBasemap';
 
 export interface MapFocus {
   key: string;
@@ -16,15 +17,6 @@ export interface MapFocus {
   center?: [number, number];
   zoom?: number;
 }
-
-/**
- * Basemap: standard OpenStreetMap raster tiles (keyless). They are toned per theme in
- * index.css (`.agn-map .leaflet-tile-pane`) — warm and desaturated in light mode, dimmed and
- * inverted in dark mode — so observation markers stay the visual focus. The tile imagery
- * itself is unmodified OSM data and carries OSM attribution.
- */
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 /** Leaflet measures its container once; re-measure whenever the React layout resizes it. */
 function ResizeHandler() {
@@ -47,15 +39,42 @@ function RegionFitter({ regionId }: { regionId: RegionId | 'all' }) {
   return null;
 }
 
+/**
+ * Map centre that puts `target` in the middle of the part of the map not covered by the alert
+ * drawer (which overlays the right edge on wide screens).
+ */
+function centreBesideDrawer(map: LeafletMap, target: [number, number], zoom: number): LatLng {
+  const drawer = document.querySelector('aside[aria-label$=" details"]');
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const covered = drawer ? Math.max(0, mapRect.right - drawer.getBoundingClientRect().left) : 0;
+  if (covered <= 0 || covered >= mapRect.width * 0.8) return latLng(target);
+  return map.unproject(map.project(target, zoom).add([covered / 2, 0]), zoom);
+}
+
 function SelectionFlyer({ alert }: { alert: EnrichedAlert | null }) {
   const map = useMap();
   const id = alert?.id ?? null;
   const centroid = alert?.centroid;
   const lastId = useRef<string | null>(null);
+  const jumped = useRef(false);
   useEffect(() => {
     if (!id || !centroid || id === lastId.current) return;
     lastId.current = id;
-    map.flyTo(centroid, Math.max(map.getZoom(), 11), { duration: 0.6 });
+    const zoom = Math.max(map.getZoom(), 11);
+    if (jumped.current) {
+      map.flyTo(centreBesideDrawer(map, centroid, zoom), zoom, { duration: 0.6 });
+      return;
+    }
+    // First selection (e.g. opening a shared #/map/ALT-… link): jump once the region fit and
+    // layout have settled, otherwise they would reset the view straight after.
+    const t = window.setTimeout(() => {
+      jumped.current = true;
+      map.setView(centreBesideDrawer(map, centroid, zoom), zoom, { animate: false });
+    });
+    return () => {
+      window.clearTimeout(t);
+      if (!jumped.current) lastId.current = null;
+    };
   }, [map, id, centroid]);
   return null;
 }
@@ -124,16 +143,8 @@ export function OpsMap({
         className="agn-map h-full w-full"
         worldCopyJump
       >
-        <TileLayer
-          attribution={ATTRIBUTION}
-          url={TILE_URL}
-          subdomains={['a', 'b', 'c']}
-          maxZoom={19}
-          eventHandlers={{
-            tileerror: () => setTileErrors((n) => n + 1),
-            load: () => setTileErrors(0),
-          }}
-        />
+        {/* Vector basemap with India's official boundary — see basemapStyle.ts */}
+        <VectorBasemap onError={() => setTileErrors((n) => n + 1)} onLoad={() => setTileErrors(0)} />
         <ResizeHandler />
         <RegionFitter regionId={regionId} />
         {showAssets && <AssetLayer assets={assets} highlightId={highlightAssetId} />}
@@ -153,17 +164,17 @@ export function OpsMap({
       </MapContainer>
 
       {/* Layer controls */}
-      <div className="absolute right-3 top-3 z-[500] flex flex-wrap gap-2">
+      <div className="absolute right-3 top-3 z-[500] flex flex-col items-end gap-2 sm:flex-row">
         <button
           type="button"
           role="switch"
           aria-checked={showSpread}
           onClick={() => setShowSpread((v) => !v)}
           className="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface pl-2.5 pr-2 text-13 text-fg shadow-raised transition-colors hover:bg-surface-2"
-          title="Toggle wind vector and 3h/6h projected fire spread"
+          title="Wind and illustrative spread envelope for the selected alert"
         >
-          <Wind className="h-3.5 w-3.5 text-accent" aria-hidden />
-          Wind & spread
+          <Wind className="h-3.5 w-3.5 text-fg-subtle" aria-hidden />
+          Wind and spread
           <span
             className={`relative ml-1 inline-flex h-4 w-7 items-center rounded-full transition-colors ${showSpread ? 'bg-accent' : 'bg-line-strong'}`}
             aria-hidden

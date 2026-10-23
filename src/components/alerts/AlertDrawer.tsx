@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link2, Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { reviewerName } from '../../data/regions';
 import { formatCoord, formatDateTime, formatKm, formatUtc, relativeTime } from '../../lib/format';
+import { isLiveAlert } from '../../lib/provenance';
 import { sortEvents } from '../../lib/verification';
+import { alertLink } from '../../state/hash';
 import { useApp } from '../../state/useApp';
 import { ActivityTimeline } from '../activity/ActivityTimeline';
 import { BandBadge, DemoTag, Field, StatusBadge } from '../common/ui';
@@ -29,13 +31,16 @@ export function AlertDrawer() {
   const [dispatchOpen, setDispatchOpen] = useState(false);
 
   useEffect(() => {
-    if (!alert) return;
+    // While the share dialog is open, Escape belongs to the dialog.
+    if (!alert || dispatchOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dispatch({ type: 'select', alertId: null });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [alert, dispatch]);
+  }, [alert, dispatch, dispatchOpen]);
+
+  const closeDispatch = useCallback(() => setDispatchOpen(false), []);
 
   const history = useMemo(
     () => (alert ? sortEvents(state.events.filter((e) => e.alertId === alert.id)).reverse() : []),
@@ -46,6 +51,16 @@ export function AlertDrawer() {
   const now = new Date(state.scoredAt);
   const isIncident = alert.verification.status === 'confirmed';
   const instruments = [...new Set(alert.observations.map((o) => o.instrument))].join(' + ');
+  const live = isLiveAlert(alert);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(alertLink(state.view, alert.id, window.location));
+      dispatch({ type: 'toast', message: `Link to ${alert.id} copied.`, tone: 'success' });
+    } catch {
+      dispatch({ type: 'toast', message: 'Could not copy the link — copy it from the address bar instead.', tone: 'error' });
+    }
+  };
 
   return (
     <>
@@ -59,32 +74,37 @@ export function AlertDrawer() {
               <div className="text-xs text-fg-subtle">{isIncident ? 'Verified incident' : 'Candidate alert'} · {alert.regionName}</div>
               <h2 className="mt-1 font-mono text-xl font-medium tracking-tight text-fg">{alert.id}</h2>
             </div>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'select', alertId: null })}
-              className="btn btn-ghost btn-icon -mr-2 -mt-1"
-              aria-label="Close details"
-              title="Close (Esc)"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="-mr-2 -mt-1 flex items-center">
+              <button
+                type="button"
+                onClick={copyLink}
+                className="btn btn-ghost btn-icon"
+                aria-label="Copy link to this alert"
+                title={live ? 'Copy link (opens for people viewing the same live data)' : 'Copy link to this alert'}
+              >
+                <Link2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'select', alertId: null })}
+                className="btn btn-ghost btn-icon"
+                aria-label="Close details"
+                title="Close (Esc)"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <BandBadge band={alert.band} />
             <StatusBadge status={alert.verification.status} />
-            <DemoTag />
+            {live ? <DemoTag label="NASA FIRMS" /> : <DemoTag />}
           </div>
 
-          <div className="mt-3.5">
-            <button
-              type="button"
-              onClick={() => setDispatchOpen(true)}
-              className="btn flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Dispatch WhatsApp Ranger Alert
-            </button>
-          </div>
+          <button type="button" onClick={() => setDispatchOpen(true)} className="btn btn-secondary mt-3.5 w-full">
+            <Send className="h-3.5 w-3.5" aria-hidden />
+            Share with a field team via WhatsApp
+          </button>
 
           {isIncident ? (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-critical/[0.07] px-3 py-2 text-13 text-critical">
@@ -131,7 +151,7 @@ export function AlertDrawer() {
               <Field label="Observations">
                 {alert.observations.length} across {alert.distinctPasses} overpass{alert.distinctPasses === 1 ? '' : 'es'}
               </Field>
-              <Field label="Source">{instruments} (sample)</Field>
+              <Field label="Source">{instruments} ({live ? 'NASA FIRMS near real time' : 'sample'})</Field>
               <Field label="Nearest asset">
                 {alert.nearestAsset ? (
                   <span title={alert.nearestAsset.asset.name}>
@@ -147,7 +167,7 @@ export function AlertDrawer() {
             </dl>
           </Section>
 
-          <Section title="Fire weather & spread prediction" aside="Live / Rothermel model">
+          <Section title="Weather and spread estimate" aside="Illustrative, not a forecast">
             <FireWeatherCard alert={alert} />
           </Section>
 
@@ -169,12 +189,7 @@ export function AlertDrawer() {
         </div>
       </aside>
 
-      <WhatsAppDispatchModal
-        alert={alert}
-        isOpen={dispatchOpen}
-        onClose={() => setDispatchOpen(false)}
-      />
+      {dispatchOpen && <WhatsAppDispatchModal alert={alert} onClose={closeDispatch} />}
     </>
   );
 }
-

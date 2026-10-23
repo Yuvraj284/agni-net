@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'test-results', 'playwright-report'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -21,5 +21,11 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
+  },
+  {
+    // Node-side code: the FIRMS proxy, configs and Playwright tests (whose fixtures call `use`).
+    files: ['server/**/*.ts', 'e2e/**/*.ts', '*.config.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
 );

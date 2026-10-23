@@ -50,8 +50,8 @@ export interface Observation {
   frpMW: number | null;
   dayNight: 'D' | 'N';
   regionId: RegionId;
-  /** Every seeded record is labelled as demo data; there is no live feed. */
-  provenance: 'demo-sample';
+  /** Synthetic demo record, or a NASA FIRMS near-real-time detection fetched through the proxy. */
+  provenance: 'demo-sample' | 'firms-nrt';
 }
 
 export type AssetType =

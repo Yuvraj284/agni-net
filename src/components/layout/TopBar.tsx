@@ -6,7 +6,7 @@ import { useApp } from '../../state/useApp';
 import { useTheme } from '../../theme/useTheme';
 import type { RegionId } from '../../types';
 import type { ViewId } from '../../state/types';
-import { DemoTag, Select } from '../common/ui';
+import { Select } from '../common/ui';
 
 const TITLES: Record<ViewId, { title: string; subtitle: string }> = {
   overview: { title: 'Overview', subtitle: 'Satellite hotspots, prioritised for human review' },
@@ -32,8 +32,41 @@ function ThemeToggle() {
   );
 }
 
+function SourceOption({
+  active,
+  title,
+  children,
+  onSelect,
+  disabled,
+}: {
+  active: boolean;
+  title: string;
+  children: React.ReactNode;
+  onSelect: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      disabled={disabled}
+      onClick={onSelect}
+      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors disabled:cursor-wait disabled:opacity-60 ${
+        active ? 'border-accent/50 bg-accent/[0.06]' : 'border-line hover:border-line-strong hover:bg-surface-2'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-fg">{title}</span>
+        {active && <span className="text-xs font-medium text-accent">In use</span>}
+      </div>
+      <div className="mt-0.5 text-xs leading-relaxed text-fg-muted">{children}</div>
+    </button>
+  );
+}
+
 function SourcePopover() {
-  const { state, observations } = useApp();
+  const { state, observations, actions } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -50,41 +83,79 @@ function SourcePopover() {
     };
   }, [open]);
 
+  const live = state.dataSource === 'live';
+  const loading = state.live.status === 'loading';
+  const dataset = state.live.dataset;
+  const label = loading ? 'Loading live data…' : live ? 'NASA FIRMS' : 'Sample data';
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Data source: sample data, offline"
+        aria-label={`Data source: ${label}`}
         className="btn btn-secondary gap-2 px-2.5"
       >
-        <span className="h-2 w-2 rounded-full bg-medium" aria-hidden />
+        <span className={`h-2 w-2 rounded-full ${loading ? 'animate-pulse bg-info' : live ? 'bg-success' : 'bg-medium'}`} aria-hidden />
         <Database className="h-3.5 w-3.5 text-fg-subtle sm:hidden" aria-hidden />
-        <span className="hidden sm:inline">Sample data</span>
+        <span className="hidden sm:inline">{label}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-[1200] mt-2 w-80 animate-fade-up rounded-xl border border-line bg-surface p-4 text-13 text-fg-muted shadow-pop">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-fg">Data source</span>
-            <DemoTag label="Demo / sample" />
+        <div className="fixed inset-x-3 top-[4.5rem] z-[1200] animate-fade-up sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[22rem] rounded-xl border border-line bg-surface p-4 text-13 text-fg-muted shadow-pop">
+          <div className="mb-3 font-semibold text-fg">Data source</div>
+          <div className="space-y-2" role="radiogroup" aria-label="Data source">
+            <SourceOption active={!live} title="Sample data" onSelect={() => live && actions.switchToDemo()}>
+              Synthetic hotspots in a FIRMS-like schema, generated in this browser. Works offline.
+            </SourceOption>
+            <SourceOption
+              active={live}
+              disabled={loading}
+              title="NASA FIRMS, last 24 hours"
+              onSelect={() => void actions.loadLive()}
+            >
+              Near-real-time VIIRS and MODIS detections for AgniNet&apos;s monitored regions, fetched through this
+              server. Needs <span className="font-mono">FIRMS_MAP_KEY</span> in <span className="font-mono">.env.local</span>.
+            </SourceOption>
           </div>
-          <p className="leading-relaxed">
-            {observations.length} synthetic hotspot observations in a FIRMS-like schema (VIIRS and MODIS fields), generated
-            in this browser. <span className="font-medium text-fg">No live satellite feed is connected.</span>
-          </p>
           <dl className="mt-3 space-y-1.5 border-t border-line pt-3 text-xs">
-            <div className="flex justify-between gap-4">
-              <dt className="text-fg-subtle">Dataset generated</dt>
-              <dd className="font-mono text-fg">{formatDateTime(state.anchor)}</dd>
-            </div>
+            {live && dataset ? (
+              <>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-fg-subtle">Fetched</dt>
+                  <dd className="font-mono text-fg">{formatDateTime(dataset.fetchedAt)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-fg-subtle">In monitored regions</dt>
+                  <dd className="tabular-nums text-fg">{observations.length} detections</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-fg-subtle">Elsewhere in India (not shown)</dt>
+                  <dd className="tabular-nums text-fg">{dataset.outsideRegions}</dd>
+                </div>
+                {dataset.failedSources.length > 0 && (
+                  <div className="text-critical">Failed: {dataset.failedSources.map((f) => f.source).join(', ')}</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-fg-subtle">Sample observations</dt>
+                  <dd className="tabular-nums text-fg">{observations.length}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-fg-subtle">Dataset generated</dt>
+                  <dd className="font-mono text-fg">{formatDateTime(state.anchor)}</dd>
+                </div>
+              </>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-fg-subtle">Scored at</dt>
               <dd className="font-mono text-fg">{formatDateTime(state.scoredAt)}</dd>
             </div>
           </dl>
           <p className="mt-3 text-xs leading-relaxed text-fg-subtle">
-            Refresh re-scores recency against the current time. Asset boundaries are illustrative.
+            Satellite hotspots are candidates, not confirmed fires. Asset boundaries are illustrative.
           </p>
         </div>
       )}
@@ -135,7 +206,7 @@ export function TopBar() {
         <button
           type="button"
           onClick={actions.refresh}
-          title="Re-score sample data against the current time"
+          title={state.dataSource === 'live' ? 'Fetch the latest NASA FIRMS detections' : 'Re-score sample data against the current time'}
           aria-label="Refresh"
           className="btn btn-ghost btn-icon"
         >

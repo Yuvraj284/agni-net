@@ -2,21 +2,20 @@ import { DEFAULT_ACTOR } from '../data/regions';
 import { generateObservations, seedEvents } from '../data/observations';
 import { loadState } from '../persistence/storage';
 import { appendEvents } from '../lib/verification';
-import { DEFAULT_FILTERS, VIEWS, type Action, type AppState, type ViewId } from './types';
-
-export function viewFromHash(hash: string): ViewId {
-  const v = hash.replace(/^#\/?/, '') as ViewId;
-  return VIEWS.includes(v) ? v : 'overview';
-}
+import { parseHash } from './hash';
+import { DEFAULT_FILTERS, type Action, type AppState } from './types';
 
 /** Build the initial state from storage, falling back to a freshly generated demo dataset. */
 export function initState(): AppState {
   const { state: saved, error } = loadState();
   const now = new Date().toISOString();
+  const route = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
   const base = {
-    view: viewFromHash(typeof window !== 'undefined' ? window.location.hash : ''),
+    dataSource: 'demo' as const,
+    live: { status: 'idle' as const, dataset: null },
+    view: route.view,
     regionId: 'all' as const,
-    selectedAlertId: null,
+    selectedAlertId: route.alertId,
     filters: DEFAULT_FILTERS,
     mapBounds: null,
     storageError: error,
@@ -73,5 +72,20 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, toast: { id: ++toastId, message: action.message, tone: action.tone } };
     case 'clearToast':
       return state.toast?.id === action.id ? { ...state, toast: null } : state;
+    case 'liveRequested':
+      return { ...state, live: { ...state.live, status: 'loading' } };
+    case 'liveLoaded':
+      return {
+        ...state,
+        dataSource: 'live',
+        live: { status: 'ready', dataset: action.dataset },
+        scoredAt: action.now,
+        lastRefreshedAt: action.now,
+        selectedAlertId: state.dataSource === 'live' ? state.selectedAlertId : null,
+      };
+    case 'liveFailed':
+      return { ...state, live: { ...state.live, status: state.live.dataset ? 'ready' : 'idle' } };
+    case 'useDemo':
+      return { ...state, dataSource: 'demo', selectedAlertId: null };
   }
 }
