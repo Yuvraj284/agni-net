@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Circle, MapContainer, useMap, useMapEvents } from 'react-leaflet';
-import type { LatLngBoundsExpression } from 'leaflet';
+import { latLng, type LatLng, type LatLngBoundsExpression, type Map as LeafletMap } from 'leaflet';
 import { CloudOff, Layers, Wind } from 'lucide-react';
 import { INDIA_VIEW, regionById } from '../../data/regions';
 import type { Asset, EnrichedAlert, RegionId } from '../../types';
@@ -39,15 +39,42 @@ function RegionFitter({ regionId }: { regionId: RegionId | 'all' }) {
   return null;
 }
 
+/**
+ * Map centre that puts `target` in the middle of the part of the map not covered by the alert
+ * drawer (which overlays the right edge on wide screens).
+ */
+function centreBesideDrawer(map: LeafletMap, target: [number, number], zoom: number): LatLng {
+  const drawer = document.querySelector('aside[aria-label$=" details"]');
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const covered = drawer ? Math.max(0, mapRect.right - drawer.getBoundingClientRect().left) : 0;
+  if (covered <= 0 || covered >= mapRect.width * 0.8) return latLng(target);
+  return map.unproject(map.project(target, zoom).add([covered / 2, 0]), zoom);
+}
+
 function SelectionFlyer({ alert }: { alert: EnrichedAlert | null }) {
   const map = useMap();
   const id = alert?.id ?? null;
   const centroid = alert?.centroid;
   const lastId = useRef<string | null>(null);
+  const jumped = useRef(false);
   useEffect(() => {
     if (!id || !centroid || id === lastId.current) return;
     lastId.current = id;
-    map.flyTo(centroid, Math.max(map.getZoom(), 11), { duration: 0.6 });
+    const zoom = Math.max(map.getZoom(), 11);
+    if (jumped.current) {
+      map.flyTo(centreBesideDrawer(map, centroid, zoom), zoom, { duration: 0.6 });
+      return;
+    }
+    // First selection (e.g. opening a shared #/map/ALT-… link): jump once the region fit and
+    // layout have settled, otherwise they would reset the view straight after.
+    const t = window.setTimeout(() => {
+      jumped.current = true;
+      map.setView(centreBesideDrawer(map, centroid, zoom), zoom, { animate: false });
+    });
+    return () => {
+      window.clearTimeout(t);
+      if (!jumped.current) lastId.current = null;
+    };
   }, [map, id, centroid]);
   return null;
 }
@@ -137,7 +164,7 @@ export function OpsMap({
       </MapContainer>
 
       {/* Layer controls */}
-      <div className="absolute right-3 top-3 z-[500] flex flex-wrap gap-2">
+      <div className="absolute right-3 top-3 z-[500] flex flex-col items-end gap-2 sm:flex-row">
         <button
           type="button"
           role="switch"

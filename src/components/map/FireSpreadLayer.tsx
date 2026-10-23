@@ -39,7 +39,7 @@ export function FireSpreadLayer({ alert }: { alert: EnrichedAlert }) {
   const source = weather.source === 'live-meteo' ? 'Current wind (Open-Meteo)' : 'Sample wind estimate';
 
   // Place the wind chip upwind of the centroid so it does not cover the fire markers.
-  const chipPos = destinationPoint(alert.centroid, Math.max(1.2, alert.extentKm + 0.8), weather.windDirectionDeg);
+  const chipPos = destinationPoint(alert.centroid, Math.max(2.5, alert.extentKm + 1.5), weather.windDirectionDeg);
 
   return (
     <>

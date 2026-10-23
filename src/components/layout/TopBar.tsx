@@ -102,7 +102,7 @@ function SourcePopover() {
         <span className="hidden sm:inline">{label}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-[1200] mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] animate-fade-up rounded-xl border border-line bg-surface p-4 text-13 text-fg-muted shadow-pop">
+        <div className="fixed inset-x-3 top-[4.5rem] z-[1200] animate-fade-up sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[22rem] rounded-xl border border-line bg-surface p-4 text-13 text-fg-muted shadow-pop">
           <div className="mb-3 font-semibold text-fg">Data source</div>
           <div className="space-y-2" role="radiogroup" aria-label="Data source">
             <SourceOption active={!live} title="Sample data" onSelect={() => live && actions.switchToDemo()}>
