@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Info } from 'lucide-react';
+import { ChevronDown, Info, Navigation } from 'lucide-react';
 import { ASSET_TYPE_META } from '../../data/assets';
 import type { AssetType } from '../../types';
 import { ASSET_STYLE, BAND_META, BAND_ORDER } from '../common/meta';
@@ -45,19 +45,20 @@ export function MapLegend() {
             <Row><span className="agn-legend-dot agn-band-high agn-st-unconfirmed" />Unconfirmed — hollow</Row>
           </div>
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-fg">Fire spread & wind</div>
+            <div className="text-xs font-medium text-fg">Selected alert: wind and spread</div>
             <Row>
-              <span className="h-0.5 w-3 border-t-2 border-dashed border-[#f97316]" />
-              3h Projected reach (amber)
+              <span className="w-3 border-t-2 border-dashed border-high" aria-hidden />
+              Illustrative 3 h envelope
             </Row>
             <Row>
-              <span className="h-0.5 w-3 border-t-2 border-dashed border-[#ef4444]" />
-              6h Projected reach (crimson)
+              <span className="w-3 border-t-2 border-dashed border-critical" aria-hidden />
+              Illustrative 6 h envelope
             </Row>
             <Row>
-              <span className="font-mono text-2xs text-accent">↗ 18 km/h</span>
-              Live downwind vector
+              <Navigation className="h-3 w-3 rotate-45 text-accent" aria-hidden />
+              Wind, pointing downwind
             </Row>
+            <p className="text-2xs leading-snug text-fg-subtle">Heuristic envelopes, not a fire-spread forecast.</p>
           </div>
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-fg">Mapped assets</div>

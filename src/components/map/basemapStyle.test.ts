@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import bordersRaw from '../../../public/geo/india-land-borders.geojson?raw';
 import { describe, expect, it } from 'vitest';
 import { featureFilter, validateStyleMin } from '@maplibre/maplibre-gl-style-spec';
 import { INDIA_OUTLINE } from '../../data/indiaOutline';
@@ -38,7 +38,7 @@ describe('India outline (official depiction)', () => {
 });
 
 describe('drawn India land boundary', () => {
-  const borders = JSON.parse(readFileSync('public/geo/india-land-borders.geojson', 'utf8'));
+  const borders = JSON.parse(bordersRaw);
   const coords: [number, number][] = borders.features.flatMap((f: { geometry: { type: string; coordinates: unknown } }) =>
     f.geometry.type === 'LineString'
       ? (f.geometry.coordinates as [number, number][])

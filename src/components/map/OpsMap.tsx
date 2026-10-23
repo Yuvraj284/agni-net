@@ -144,10 +144,10 @@ export function OpsMap({
           aria-checked={showSpread}
           onClick={() => setShowSpread((v) => !v)}
           className="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface pl-2.5 pr-2 text-13 text-fg shadow-raised transition-colors hover:bg-surface-2"
-          title="Toggle wind vector and 3h/6h projected fire spread"
+          title="Wind and illustrative spread envelope for the selected alert"
         >
-          <Wind className="h-3.5 w-3.5 text-accent" aria-hidden />
-          Wind & spread
+          <Wind className="h-3.5 w-3.5 text-fg-subtle" aria-hidden />
+          Wind and spread
           <span
             className={`relative ml-1 inline-flex h-4 w-7 items-center rounded-full transition-colors ${showSpread ? 'bg-accent' : 'bg-line-strong'}`}
             aria-hidden

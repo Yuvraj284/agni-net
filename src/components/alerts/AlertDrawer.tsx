@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { reviewerName } from '../../data/regions';
 import { formatCoord, formatDateTime, formatKm, formatUtc, relativeTime } from '../../lib/format';
@@ -29,13 +29,16 @@ export function AlertDrawer() {
   const [dispatchOpen, setDispatchOpen] = useState(false);
 
   useEffect(() => {
-    if (!alert) return;
+    // While the share dialog is open, Escape belongs to the dialog.
+    if (!alert || dispatchOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dispatch({ type: 'select', alertId: null });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [alert, dispatch]);
+  }, [alert, dispatch, dispatchOpen]);
+
+  const closeDispatch = useCallback(() => setDispatchOpen(false), []);
 
   const history = useMemo(
     () => (alert ? sortEvents(state.events.filter((e) => e.alertId === alert.id)).reverse() : []),
@@ -75,16 +78,10 @@ export function AlertDrawer() {
             <DemoTag />
           </div>
 
-          <div className="mt-3.5">
-            <button
-              type="button"
-              onClick={() => setDispatchOpen(true)}
-              className="btn flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Dispatch WhatsApp Ranger Alert
-            </button>
-          </div>
+          <button type="button" onClick={() => setDispatchOpen(true)} className="btn btn-secondary mt-3.5 w-full">
+            <Send className="h-3.5 w-3.5" aria-hidden />
+            Share with a field team via WhatsApp
+          </button>
 
           {isIncident ? (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-critical/[0.07] px-3 py-2 text-13 text-critical">
@@ -147,7 +144,7 @@ export function AlertDrawer() {
             </dl>
           </Section>
 
-          <Section title="Fire weather & spread prediction" aside="Live / Rothermel model">
+          <Section title="Weather and spread estimate" aside="Illustrative, not a forecast">
             <FireWeatherCard alert={alert} />
           </Section>
 
@@ -169,12 +166,7 @@ export function AlertDrawer() {
         </div>
       </aside>
 
-      <WhatsAppDispatchModal
-        alert={alert}
-        isOpen={dispatchOpen}
-        onClose={() => setDispatchOpen(false)}
-      />
+      {dispatchOpen && <WhatsAppDispatchModal alert={alert} onClose={closeDispatch} />}
     </>
   );
 }
-

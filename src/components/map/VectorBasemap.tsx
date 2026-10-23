@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import type { MaplibreGL } from 'leaflet';
+import L, { type MaplibreGL } from 'leaflet';
 import { useTheme } from '../../theme/useTheme';
 import { BASEMAP_ATTRIBUTION, buildBasemapStyle } from './basemapStyle';
 
@@ -24,11 +24,8 @@ export function VectorBasemap({ onError, onLoad }: { onError: () => void; onLoad
 
     (async () => {
       try {
-        const [{ default: L }] = await Promise.all([
-          import('leaflet'),
-          import('maplibre-gl/dist/maplibre-gl.css'),
-        ]);
-        await import('@maplibre/maplibre-gl-leaflet');
+        await import('maplibre-gl/dist/maplibre-gl.css');
+        await import('@maplibre/maplibre-gl-leaflet'); // registers L.maplibreGL
         if (cancelled) return;
         layer = L.maplibreGL({
           style: buildBasemapStyle(themeRef.current),

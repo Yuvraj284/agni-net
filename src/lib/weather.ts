@@ -79,17 +79,27 @@ export function estimateRegionalWeather(lat: number, lon: number, regionId?: Reg
   };
 }
 
-/** In-memory cache for weather results */
+/** In-memory cache for weather results, plus in-flight requests so concurrent callers share one fetch. */
 const weatherCache = new Map<string, { weather: FireWeather; expiresAt: number }>();
+const inFlight = new Map<string, Promise<FireWeather>>();
 
-/** Fetch live meteorological data for an alert coordinate (Open-Meteo, free, no API key required) */
-export async function fetchFireWeather(lat: number, lon: number, regionId?: RegionId): Promise<FireWeather> {
+/**
+ * Current weather at an alert coordinate from Open-Meteo (free, no API key). The coordinate
+ * (rounded to 4 decimals) is sent to api.open-meteo.com. Falls back to a deterministic
+ * sample estimate, marked `source: 'sample-estimate'`, when offline or the request fails.
+ */
+export function fetchFireWeather(lat: number, lon: number, regionId?: RegionId): Promise<FireWeather> {
   const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
   const cached = weatherCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.weather;
-  }
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.weather);
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+  const request = requestFireWeather(key, lat, lon, regionId).finally(() => inFlight.delete(key));
+  inFlight.set(key, request);
+  return request;
+}
 
+async function requestFireWeather(key: string, lat: number, lon: number, regionId?: RegionId): Promise<FireWeather> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3500);
@@ -134,16 +144,20 @@ export async function fetchFireWeather(lat: number, lon: number, regionId?: Regi
 }
 
 /**
- * Rothermel-inspired surface fire propagation model.
- * Produces 3h and 6h projected downwind spread polygons.
+ * Illustrative spread envelope — NOT a calibrated fire-behaviour model.
+ *
+ * A simple heuristic: a fixed base rate scaled up by wind speed and low humidity, drawn as a
+ * downwind-elongated shape for 3 h and 6 h. It ignores fuel type, slope, terrain and
+ * suppression, and has not been validated against observed fires. Use it to discuss
+ * direction and urgency, never as a prediction.
  */
 export function computeFireSpread(
   origin: [number, number],
   weather: FireWeather,
   extentKm: number = 0.5,
 ): SpreadProjection {
-  // Base rate of spread in dry deciduous/pine fuels
-  const baseRoS = 0.22; // km/h
+  // Assumed base rate of spread (km/h); a placeholder, not derived from fuel data
+  const baseRoS = 0.22;
   // Wind factor: exponential multiplier
   const windFactor = Math.pow(1 + 0.09 * weather.windSpeedKmh, 1.25);
   // Fuel moisture deficit factor (lower humidity = faster spread)
