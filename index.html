@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8f6f1" />
+    <meta name="description" content="AgniNet — satellite fire intelligence and field response coordination (prototype, demo data)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Apply the saved theme before first paint (key must match src/theme/theme.ts). Light by default. -->
+    <script>
+      (function () {
+        var t = 'light';
+        try { t = localStorage.getItem('agninet:theme') === 'dark' ? 'dark' : 'light'; } catch (e) {}
+        var r = document.documentElement;
+        if (t === 'dark') r.classList.add('dark');
+        r.style.colorScheme = t;
+        if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#141615');
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>AgniNet</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
