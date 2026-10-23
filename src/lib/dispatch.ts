@@ -1,10 +1,12 @@
 import type { EnrichedAlert } from '../types';
 import { formatCoord, formatDateTime, formatKm } from './format';
+import { isLiveAlert } from './provenance';
 import { STATUS_META } from './verification';
 import { bearingToCompass, type FireWeather } from './weather';
 
 /**
- * Plain-text WhatsApp dispatch message for an alert. Always marked as demo data, says
+ * Plain-text WhatsApp dispatch message for an alert. Marked as demo data or as an unverified
+ * NASA FIRMS detection, says
  * whether the alert is a candidate or a verified incident, and only quotes weather when it
  * came from the live source.
  */
@@ -25,7 +27,9 @@ export function buildDispatchMessage(alert: EnrichedAlert, weather: FireWeather 
       : 'live weather unavailable';
 
   return [
-    '*AgniNet — DEMO DATA, not a real alert*',
+    isLiveAlert(alert)
+      ? '*AgniNet — NASA FIRMS satellite detection, not yet verified on the ground*'
+      : '*AgniNet — DEMO DATA, not a real alert*',
     '',
     `*${kind}* ${alert.id}`,
     `Priority: ${alert.band} · score ${score}`,

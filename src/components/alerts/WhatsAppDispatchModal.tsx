@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, ExternalLink, Info, Send, X } from 'lucide-react';
 import { buildDispatchMessage } from '../../lib/dispatch';
+import { isLiveAlert } from '../../lib/provenance';
 import { fetchFireWeather, type FireWeather } from '../../lib/weather';
 import { useApp } from '../../state/useApp';
 import type { EnrichedAlert } from '../../types';
@@ -138,7 +139,10 @@ export function WhatsAppDispatchModal({ alert, onClose }: { alert: EnrichedAlert
           <p className="flex items-start gap-2 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-relaxed text-fg-muted">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-subtle" aria-hidden />
             <span>
-              The message is marked as demo data. AgniNet only opens WhatsApp — it cannot confirm delivery. A history entry
+              {isLiveAlert(alert)
+                ? 'The message says the detection is not yet verified on the ground.'
+                : 'The message is marked as demo data.'}{' '}
+              AgniNet only opens WhatsApp — it cannot confirm delivery. A history entry
               noting that the message was opened is recorded as {state.actingAs}.
             </span>
           </p>

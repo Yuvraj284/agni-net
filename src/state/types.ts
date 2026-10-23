@@ -1,3 +1,4 @@
+import type { LiveDataset } from '../lib/firms';
 import type { PriorityBand, RegionId, VerificationEvent, VerificationStatus } from '../types';
 
 export type ViewId = 'overview' | 'map' | 'alerts' | 'assets' | 'activity';
@@ -38,7 +39,18 @@ export interface Toast {
   tone: 'success' | 'error' | 'info';
 }
 
+/** 'demo' = synthetic sample data; 'live' = NASA FIRMS detections fetched through the proxy. */
+export type DataSource = 'demo' | 'live';
+
+export interface LiveState {
+  status: 'idle' | 'loading' | 'ready';
+  dataset: LiveDataset | null;
+}
+
 export interface AppState {
+  /** Not persisted: every session starts on sample data. */
+  dataSource: DataSource;
+  live: LiveState;
   anchor: string;
   events: VerificationEvent[];
   actingAs: string;
@@ -67,4 +79,8 @@ export type Action =
   | { type: 'resetDemo'; now: string; events: VerificationEvent[] }
   | { type: 'setStorageError'; error: string | null }
   | { type: 'toast'; message: string; tone: Toast['tone'] }
-  | { type: 'clearToast'; id: number };
+  | { type: 'clearToast'; id: number }
+  | { type: 'liveRequested' }
+  | { type: 'liveLoaded'; dataset: LiveDataset; now: string }
+  | { type: 'liveFailed' }
+  | { type: 'useDemo' };

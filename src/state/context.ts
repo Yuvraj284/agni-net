@@ -25,6 +25,9 @@ export interface AppContextValue {
     refresh: () => void;
     resetDemo: () => void;
     openAlert: (alertId: string, view?: AppState['view']) => void;
+    /** Fetch NASA FIRMS detections through the proxy and switch to them. */
+    loadLive: () => Promise<void>;
+    switchToDemo: () => void;
   };
 }
 

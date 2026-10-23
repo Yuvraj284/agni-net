@@ -29,6 +29,13 @@ describe('WhatsApp dispatch message', () => {
     expect(buildDispatchMessage(candidate, sample)).not.toContain(`${sample.temperatureC}°C`);
   });
 
+  it('labels live FIRMS alerts as unverified detections instead of demo data', () => {
+    const liveAlert = { ...candidate, observations: candidate.observations.map((o) => ({ ...o, provenance: 'firms-nrt' as const })) };
+    const msg = buildDispatchMessage(liveAlert, live);
+    expect(msg).toContain('NASA FIRMS satellite detection, not yet verified on the ground');
+    expect(msg).not.toContain('DEMO DATA');
+  });
+
   it('asks for verification instead of issuing operational directives', () => {
     const msg = buildDispatchMessage(candidate, null);
     expect(msg).toContain('Request: ground verification');

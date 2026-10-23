@@ -1,18 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import L, { type MaplibreGL } from 'leaflet';
 import { useTheme } from '../../theme/useTheme';
 import { BASEMAP_ATTRIBUTION, buildBasemapStyle } from './basemapStyle';
+import type { MaplibreLayer } from './maplibreLayer';
 
 /**
  * Renders the MapLibre vector basemap inside Leaflet's tile pane, so every Leaflet overlay
  * (clusters, assets, spread projection) keeps working unchanged. MapLibre is loaded lazily to
- * keep it out of the initial bundle.
+ * keep it out of the initial bundle. The map container's `data-basemap` attribute reports
+ * `loading`, `ready` or `error` (used by the end-to-end tests).
  */
 export function VectorBasemap({ onError, onLoad }: { onError: () => void; onLoad: () => void }) {
   const map = useMap();
   const [theme] = useTheme();
-  const layerRef = useRef<MaplibreGL | null>(null);
+  const layerRef = useRef<MaplibreLayer | null>(null);
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const handlers = useRef({ onError, onLoad });
@@ -20,27 +21,31 @@ export function VectorBasemap({ onError, onLoad }: { onError: () => void; onLoad
 
   useEffect(() => {
     let cancelled = false;
-    let layer: MaplibreGL | null = null;
+    let layer: MaplibreLayer | null = null;
+    const el = map.getContainer();
+    el.dataset.basemap = 'loading';
 
-    (async () => {
-      try {
-        await import('maplibre-gl/dist/maplibre-gl.css');
-        await import('@maplibre/maplibre-gl-leaflet'); // registers L.maplibreGL
+    import('./maplibreLayer')
+      .then(({ MaplibreLayer }) => {
         if (cancelled) return;
-        layer = L.maplibreGL({
-          style: buildBasemapStyle(themeRef.current),
-          // The plugin forwards this to Leaflet's attribution control.
-          attributionControl: { customAttribution: BASEMAP_ATTRIBUTION },
-        });
+        layer = new MaplibreLayer(
+          buildBasemapStyle(themeRef.current),
+          {
+            onLoad: () => {
+              el.dataset.basemap = 'ready';
+              handlers.current.onLoad();
+            },
+            onError: () => handlers.current.onError(),
+          },
+          BASEMAP_ATTRIBUTION,
+        );
         layer.addTo(map);
         layerRef.current = layer;
-        const gl = layer.getMaplibreMap();
-        gl.on('error', () => handlers.current.onError());
-        gl.on('idle', () => handlers.current.onLoad());
-      } catch {
+      })
+      .catch(() => {
+        el.dataset.basemap = 'error';
         handlers.current.onError();
-      }
-    })();
+      });
 
     return () => {
       cancelled = true;
@@ -50,7 +55,7 @@ export function VectorBasemap({ onError, onLoad }: { onError: () => void; onLoad
   }, [map]);
 
   useEffect(() => {
-    layerRef.current?.getMaplibreMap().setStyle(buildBasemapStyle(theme));
+    layerRef.current?.setStyle(buildBasemapStyle(theme));
   }, [theme]);
 
   return null;

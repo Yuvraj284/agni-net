@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import { REVIEWERS } from '../data/regions';
 import { buildReviewEvents, validateReview, type ReviewDraft } from '../lib/verification';
+import { fetchLiveDataset, LiveFeedError } from '../lib/firms';
 import { saveState, SCHEMA_VERSION } from '../persistence/storage';
 import { AppContext, type AppContextValue } from './context';
 import {
@@ -12,7 +13,8 @@ import {
   observationsFor,
   scopeToRegion,
 } from './derive';
-import { freshDataset, initState, reducer, viewFromHash } from './reducer';
+import { buildHash, parseHash } from './hash';
+import { freshDataset, initState, reducer } from './reducer';
 import type { ViewId } from './types';
 
 const REVIEWER_IDS = REVIEWERS.map((r) => r.id);
@@ -20,7 +22,8 @@ const REVIEWER_IDS = REVIEWERS.map((r) => r.id);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initState);
 
-  const observations = useMemo(() => observationsFor(state.anchor), [state.anchor]);
+  const liveObservations = state.dataSource === 'live' ? state.live.dataset?.observations : undefined;
+  const observations = useMemo(() => liveObservations ?? observationsFor(state.anchor), [liveObservations, state.anchor]);
   const allAlerts = useMemo(
     () => deriveAlerts(observations, state.events, DEFAULT_ASSETS, new Date(state.scoredAt)),
     [observations, state.events, state.scoredAt],
@@ -51,14 +54,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (error) dispatch({ type: 'setStorageError', error });
   }, [state.anchor, state.events, state.actingAs, state.lastRefreshedAt]);
 
-  // Keep the view in the URL hash so browser back/forward and reloads work.
+  // Keep the view and selected alert in the URL hash, so reloads, back/forward and shared links work.
+  // Changing view adds a history entry; changing the selected alert only replaces it.
   useEffect(() => {
-    if (viewFromHash(window.location.hash) !== state.view || !window.location.hash) {
-      window.location.hash = `/${state.view}`;
-    }
-  }, [state.view]);
+    const desired = buildHash(state.view, state.selectedAlertId);
+    if (window.location.hash === desired) return;
+    if (parseHash(window.location.hash).view !== state.view || !window.location.hash) window.location.hash = desired;
+    else window.history.replaceState(null, '', desired);
+  }, [state.view, state.selectedAlertId]);
   useEffect(() => {
-    const onHash = () => dispatch({ type: 'setView', view: viewFromHash(window.location.hash) });
+    const onHash = () => {
+      const { view, alertId } = parseHash(window.location.hash);
+      dispatch({ type: 'setView', view });
+      dispatch({ type: 'select', alertId });
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -85,11 +94,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [alertById, state.actingAs],
   );
 
+  const loadLive = useCallback(async () => {
+    dispatch({ type: 'liveRequested' });
+    try {
+      const dataset = await fetchLiveDataset(1);
+      dispatch({ type: 'liveLoaded', dataset, now: new Date().toISOString() });
+      const failed = dataset.failedSources.length ? ` ${dataset.failedSources.length} source(s) failed.` : '';
+      dispatch({
+        type: 'toast',
+        message: `Loaded ${dataset.observations.length} NASA FIRMS detections in monitored regions (${dataset.outsideRegions} elsewhere in India not shown).${failed}`,
+        tone: dataset.failedSources.length ? 'info' : 'success',
+      });
+    } catch (e) {
+      dispatch({ type: 'liveFailed' });
+      dispatch({ type: 'toast', message: e instanceof LiveFeedError ? e.message : 'Live feed failed to load.', tone: 'error' });
+    }
+  }, []);
+
+  const switchToDemo = useCallback(() => {
+    dispatch({ type: 'useDemo' });
+    dispatch({ type: 'toast', message: 'Switched to sample data.', tone: 'info' });
+  }, []);
+
   const refresh = useCallback(() => {
+    if (state.dataSource === 'live') {
+      void loadLive();
+      return;
+    }
     const now = new Date().toISOString();
     dispatch({ type: 'refresh', now });
-    dispatch({ type: 'toast', message: 'Sample data re-scored against the current time. No live feed is connected.', tone: 'info' });
-  }, []);
+    dispatch({ type: 'toast', message: 'Sample data re-scored against the current time.', tone: 'info' });
+  }, [state.dataSource, loadLive]);
 
   const resetDemo = useCallback(() => {
     const now = new Date().toISOString();
@@ -116,9 +151,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       metrics,
       selectedAlert,
       alertById,
-      actions: { saveReview, refresh, resetDemo, openAlert },
+      actions: { saveReview, refresh, resetDemo, openAlert, loadLive, switchToDemo },
     }),
-    [state, observations, allAlerts, scopedAlerts, filteredAlerts, visibleAlerts, metrics, selectedAlert, alertById, saveReview, refresh, resetDemo, openAlert],
+    [state, observations, allAlerts, scopedAlerts, filteredAlerts, visibleAlerts, metrics, selectedAlert, alertById, saveReview, refresh, resetDemo, openAlert, loadLive, switchToDemo],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

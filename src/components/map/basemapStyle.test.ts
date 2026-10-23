@@ -62,7 +62,7 @@ describe('drawn India land boundary', () => {
 
 describe('basemap style', () => {
   const evaluate = (props: Record<string, unknown>) =>
-    featureFilter(COUNTRY_BOUNDARY_FILTER).filter({ zoom: 6 }, { type: 2, properties: props, geometry: [] } as never);
+    featureFilter(COUNTRY_BOUNDARY_FILTER, 'filter').filter({ zoom: 6 }, { type: 2, properties: props, geometry: [] } as never);
 
   it.each(['light', 'dark'] as const)('is a valid MapLibre style (%s)', (theme) => {
     expect(validateStyleMin(buildBasemapStyle(theme))).toEqual([]);

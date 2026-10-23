@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
+import { Link2, Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { reviewerName } from '../../data/regions';
 import { formatCoord, formatDateTime, formatKm, formatUtc, relativeTime } from '../../lib/format';
+import { isLiveAlert } from '../../lib/provenance';
 import { sortEvents } from '../../lib/verification';
+import { alertLink } from '../../state/hash';
 import { useApp } from '../../state/useApp';
 import { ActivityTimeline } from '../activity/ActivityTimeline';
 import { BandBadge, DemoTag, Field, StatusBadge } from '../common/ui';
@@ -49,6 +51,16 @@ export function AlertDrawer() {
   const now = new Date(state.scoredAt);
   const isIncident = alert.verification.status === 'confirmed';
   const instruments = [...new Set(alert.observations.map((o) => o.instrument))].join(' + ');
+  const live = isLiveAlert(alert);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(alertLink(state.view, alert.id, window.location));
+      dispatch({ type: 'toast', message: `Link to ${alert.id} copied.`, tone: 'success' });
+    } catch {
+      dispatch({ type: 'toast', message: 'Could not copy the link — copy it from the address bar instead.', tone: 'error' });
+    }
+  };
 
   return (
     <>
@@ -62,20 +74,31 @@ export function AlertDrawer() {
               <div className="text-xs text-fg-subtle">{isIncident ? 'Verified incident' : 'Candidate alert'} · {alert.regionName}</div>
               <h2 className="mt-1 font-mono text-xl font-medium tracking-tight text-fg">{alert.id}</h2>
             </div>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'select', alertId: null })}
-              className="btn btn-ghost btn-icon -mr-2 -mt-1"
-              aria-label="Close details"
-              title="Close (Esc)"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="-mr-2 -mt-1 flex items-center">
+              <button
+                type="button"
+                onClick={copyLink}
+                className="btn btn-ghost btn-icon"
+                aria-label="Copy link to this alert"
+                title={live ? 'Copy link (opens for people viewing the same live data)' : 'Copy link to this alert'}
+              >
+                <Link2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'select', alertId: null })}
+                className="btn btn-ghost btn-icon"
+                aria-label="Close details"
+                title="Close (Esc)"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <BandBadge band={alert.band} />
             <StatusBadge status={alert.verification.status} />
-            <DemoTag />
+            {live ? <DemoTag label="NASA FIRMS" /> : <DemoTag />}
           </div>
 
           <button type="button" onClick={() => setDispatchOpen(true)} className="btn btn-secondary mt-3.5 w-full">
@@ -128,7 +151,7 @@ export function AlertDrawer() {
               <Field label="Observations">
                 {alert.observations.length} across {alert.distinctPasses} overpass{alert.distinctPasses === 1 ? '' : 'es'}
               </Field>
-              <Field label="Source">{instruments} (sample)</Field>
+              <Field label="Source">{instruments} ({live ? 'NASA FIRMS near real time' : 'sample'})</Field>
               <Field label="Nearest asset">
                 {alert.nearestAsset ? (
                   <span title={alert.nearestAsset.asset.name}>

@@ -8,6 +8,7 @@ import {
   type FireWeather,
   type SpreadProjection,
 } from '../../lib/weather';
+import { isLiveAlert } from '../../lib/provenance';
 import type { EnrichedAlert } from '../../types';
 
 const DANGER_CLASS: Record<FireWeather['fireDangerIndex'], string> = {
@@ -108,7 +109,7 @@ export function FireWeatherCard({ alert }: { alert: EnrichedAlert }) {
         </div>
         <p className="mt-2 text-fg-subtle">
           Simple wind-and-humidity heuristic for discussing direction and urgency. It ignores fuel, slope and terrain and
-          is not validated — not a fire-behaviour forecast. The detections themselves are sample data.
+          is not validated — not a fire-behaviour forecast.{isLiveAlert(alert) ? '' : ' The detections themselves are sample data.'}
         </p>
       </div>
     </div>
