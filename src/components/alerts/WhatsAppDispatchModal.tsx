@@ -14,7 +14,7 @@ interface ContactPreset {
 
 const RECIPIENT_CONTACTS: ContactPreset[] = [
   { role: 'Forest Range Officer (QRT - Quick Response Team)', phone: '+91 89587 05587' },
-  { role: 'Divisional Forest Officer (DFO) Headquarters', phone: '+91 96969 09327' },
+  { role: 'Divisional Forest Officer (DFO) Headquarters', phone: '+91 89587 05587' },
   { role: 'District Emergency Operations Centre (DEOC)', phone: '+91 89587 05587' },
   { role: 'State Disaster Response Force (SDRF) Duty Desk', phone: '+91 89587 05587' },
 ];
