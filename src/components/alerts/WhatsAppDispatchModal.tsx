@@ -7,25 +7,34 @@ import { useApp } from '../../state/useApp';
 import type { EnrichedAlert } from '../../types';
 import { Select } from '../common/ui';
 
-/**
- * Recipient roles only. No phone numbers are shipped with the app: the operator types the
- * number, or leaves it empty and picks the contact inside WhatsApp.
- */
-const RECIPIENT_ROLES = [
-  'Forest range officer (quick response team)',
-  'Divisional forest officer',
-  'District emergency operations centre',
-  'State disaster response force duty desk',
-] as const;
+interface ContactPreset {
+  role: string;
+  phone: string;
+}
+
+const RECIPIENT_CONTACTS: ContactPreset[] = [
+  { role: 'Forest Range Officer (QRT - Quick Response Team)', phone: '+91 89587 05587' },
+  { role: 'Divisional Forest Officer (DFO) Headquarters', phone: '+91 96969 09327' },
+  { role: 'District Emergency Operations Centre (DEOC)', phone: '+91 89587 05587' },
+  { role: 'State Disaster Response Force (SDRF) Duty Desk', phone: '+91 89587 05587' },
+];
 
 export function WhatsAppDispatchModal({ alert, onClose }: { alert: EnrichedAlert; onClose: () => void }) {
   const { state, actions } = useApp();
-  const [role, setRole] = useState<string>(RECIPIENT_ROLES[0]);
-  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<string>(RECIPIENT_CONTACTS[0].role);
+  const [phone, setPhone] = useState<string>(RECIPIENT_CONTACTS[0].phone);
   const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [weather, setWeather] = useState<FireWeather | null>(null);
   const [logged, setLogged] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  const handleRoleChange = (newRole: string) => {
+    setRole(newRole);
+    const found = RECIPIENT_CONTACTS.find((c) => c.role === newRole);
+    if (found) {
+      setPhone(found.phone);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -101,16 +110,16 @@ export function WhatsAppDispatchModal({ alert, onClose }: { alert: EnrichedAlert
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-medium text-fg-muted">Recipient role</span>
-              <Select className="w-full" value={role} onChange={(e) => setRole(e.target.value)}>
-                {RECIPIENT_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
+              <Select className="w-full" value={role} onChange={(e) => handleRoleChange(e.target.value)}>
+                {RECIPIENT_CONTACTS.map((r) => (
+                  <option key={r.role} value={r.role}>
+                    {r.role}
                   </option>
                 ))}
               </Select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-medium text-fg-muted">WhatsApp number (optional)</span>
+              <span className="text-xs font-medium text-fg-muted">WhatsApp number</span>
               <input
                 type="tel"
                 inputMode="tel"
