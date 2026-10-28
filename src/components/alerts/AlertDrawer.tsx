@@ -111,6 +111,7 @@ export function AlertDrawer() {
                 type="button"
                 onClick={() => setDispatchOpen(true)}
                 className="btn btn-secondary w-full justify-center text-xs"
+                aria-label="Share with a field team via WhatsApp"
               >
                 <Send className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
                 <span>Share with Forest Team</span>

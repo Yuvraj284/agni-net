@@ -119,7 +119,7 @@ export function WhatsAppDispatchModal({ alert, onClose }: { alert: EnrichedAlert
               </Select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-medium text-fg-muted">WhatsApp number</span>
+              <span className="text-xs font-medium text-fg-muted">WhatsApp number (optional)</span>
               <input
                 type="tel"
                 inputMode="tel"
