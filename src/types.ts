@@ -156,6 +156,24 @@ export interface VerificationState {
   eventCount: number;
 }
 
+export interface FireStation {
+  id: string;
+  name: string;
+  regionId: RegionId;
+  location: [number, number];
+  address: string;
+  phone: string;
+  whatsappPhone: string;
+  officerInCharge: string;
+  appliances?: string;
+}
+
+export interface NearestFireStation {
+  station: FireStation;
+  distanceKm: number;
+  estimatedMinutes: number;
+}
+
 export type PriorityBand = 'critical' | 'high' | 'medium' | 'low';
 
 export interface EnrichedAlert extends CandidateAlert {
@@ -166,4 +184,5 @@ export interface EnrichedAlert extends CandidateAlert {
   regionName: string;
   nearestAsset: { asset: Asset; distanceKm: number } | null;
   nearHeatSource: { asset: Asset; distanceKm: number } | null;
+  nearestFireStation: NearestFireStation | null;
 }

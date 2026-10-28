@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link2, Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
+import { Flame, Link2, Send, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { reviewerName } from '../../data/regions';
 import { formatCoord, formatDateTime, formatKm, formatUtc, relativeTime } from '../../lib/format';
 import { isLiveAlert } from '../../lib/provenance';
@@ -8,6 +8,7 @@ import { alertLink } from '../../state/hash';
 import { useApp } from '../../state/useApp';
 import { ActivityTimeline } from '../activity/ActivityTimeline';
 import { BandBadge, DemoTag, Field, StatusBadge } from '../common/ui';
+import { FireStationDispatchModal } from './FireStationDispatchModal';
 import { FireWeatherCard } from './FireWeatherCard';
 import { ObservationTable } from './ObservationTable';
 import { ScoreBreakdown } from './ScoreBreakdown';
@@ -29,18 +30,20 @@ function Section({ title, aside, children }: { title: string; aside?: React.Reac
 export function AlertDrawer() {
   const { selectedAlert: alert, state, dispatch } = useApp();
   const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [fireStationDispatchOpen, setFireStationDispatchOpen] = useState(false);
 
   useEffect(() => {
-    // While the share dialog is open, Escape belongs to the dialog.
-    if (!alert || dispatchOpen) return;
+    // While any share dialog is open, Escape belongs to the dialog.
+    if (!alert || dispatchOpen || fireStationDispatchOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dispatch({ type: 'select', alertId: null });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [alert, dispatch, dispatchOpen]);
+  }, [alert, dispatch, dispatchOpen, fireStationDispatchOpen]);
 
   const closeDispatch = useCallback(() => setDispatchOpen(false), []);
+  const closeFireStationDispatch = useCallback(() => setFireStationDispatchOpen(false), []);
 
   const history = useMemo(
     () => (alert ? sortEvents(state.events.filter((e) => e.alertId === alert.id)).reverse() : []),
@@ -101,10 +104,63 @@ export function AlertDrawer() {
             {live ? <DemoTag label="NASA FIRMS" /> : <DemoTag />}
           </div>
 
-          <button type="button" onClick={() => setDispatchOpen(true)} className="btn btn-secondary mt-3.5 w-full">
-            <Send className="h-3.5 w-3.5" aria-hidden />
-            Share with a field team via WhatsApp
-          </button>
+          {/* Dispatch Action Group: Two distinct buttons */}
+          <div className="mt-3.5 space-y-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setDispatchOpen(true)}
+                className="btn btn-secondary w-full justify-center text-xs"
+                title="Share with Forest Team via WhatsApp"
+              >
+                <Send className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                <span>Share with Forest Team</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFireStationDispatchOpen(true)}
+                className="btn btn-secondary w-full justify-center text-xs border-critical/30 hover:border-critical/60 hover:bg-critical/5 text-fg"
+                title={
+                  alert.nearestFireStation
+                    ? `Alert ${alert.nearestFireStation.station.name} (${formatKm(alert.nearestFireStation.distanceKm)})`
+                    : 'Alert Nearest Fire Station'
+                }
+              >
+                <Flame className="h-3.5 w-3.5 shrink-0 text-critical" aria-hidden />
+                <span className="truncate">
+                  {alert.nearestFireStation
+                    ? `Alert Fire Station (${formatKm(alert.nearestFireStation.distanceKm)})`
+                    : 'Alert Fire Station'}
+                </span>
+              </button>
+            </div>
+
+            {/* Nearest Fire Station Quick Card */}
+            {alert.nearestFireStation && (
+              <div className="rounded-lg border border-line bg-surface-2 p-2.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 font-medium text-fg">
+                    <Flame className="h-3.5 w-3.5 text-critical" aria-hidden />
+                    <span className="truncate">{alert.nearestFireStation.station.name}</span>
+                  </div>
+                  <span className="font-mono text-2xs text-fg-subtle shrink-0">
+                    {formatKm(alert.nearestFireStation.distanceKm)} · ~{alert.nearestFireStation.estimatedMinutes}m transit
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-2xs text-fg-muted">
+                  <span className="truncate">{alert.nearestFireStation.station.officerInCharge}</span>
+                  <a
+                    href={`tel:${alert.nearestFireStation.station.phone}`}
+                    className="link font-mono font-medium hover:underline shrink-0"
+                    title="Direct call to fire station"
+                  >
+                    📞 {alert.nearestFireStation.station.phone}
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
 
           {isIncident ? (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-critical/[0.07] px-3 py-2 text-13 text-critical">
@@ -163,6 +219,20 @@ export function AlertDrawer() {
                   '—'
                 )}
               </Field>
+              <Field label="Nearest fire station">
+                {alert.nearestFireStation ? (
+                  <div className="space-y-0.5">
+                    <span title={alert.nearestFireStation.station.address}>
+                      {alert.nearestFireStation.station.name} · {formatKm(alert.nearestFireStation.distanceKm)}
+                    </span>
+                    <div className="text-2xs text-fg-subtle">
+                      ~{alert.nearestFireStation.estimatedMinutes}m transit · {alert.nearestFireStation.station.phone}
+                    </div>
+                  </div>
+                ) : (
+                  '—'
+                )}
+              </Field>
               <Field label="Reviewer">{reviewerName(alert.verification.reviewerId)}</Field>
             </dl>
           </Section>
@@ -190,6 +260,13 @@ export function AlertDrawer() {
       </aside>
 
       {dispatchOpen && <WhatsAppDispatchModal alert={alert} onClose={closeDispatch} />}
+      {fireStationDispatchOpen && alert.nearestFireStation && (
+        <FireStationDispatchModal
+          alert={alert}
+          nearestStation={alert.nearestFireStation}
+          onClose={closeFireStationDispatch}
+        />
+      )}
     </>
   );
 }

@@ -2,6 +2,7 @@ import { ASSETS } from '../data/assets';
 import { regionById } from '../data/regions';
 import { generateObservations } from '../data/observations';
 import { groupObservations } from '../lib/alerts';
+import { findNearestFireStation } from '../lib/fireStations';
 import { bandFor, scoreAlert } from '../lib/scoring';
 import { INITIAL_STATE, STATUSES, deriveAll } from '../lib/verification';
 import type { Asset, EnrichedAlert, Observation, RegionId, VerificationEvent } from '../types';
@@ -31,6 +32,7 @@ export function deriveAlerts(
       regionName: regionById(alert.regionId).name,
       nearestAsset: proximity.nearest,
       nearHeatSource: proximity.heatSource,
+      nearestFireStation: findNearestFireStation(alert.centroid, alert.regionId),
     };
   });
 }
@@ -69,7 +71,13 @@ export function applyFilters(alerts: EnrichedAlert[], filters: Filters, now: Dat
     if (filters.statuses.length && !filters.statuses.includes(a.verification.status)) return false;
     if (filters.bands.length && !filters.bands.includes(a.band)) return false;
     if (q) {
-      const haystack = [a.id, a.regionName, a.nearestAsset?.asset.name ?? '', ...a.observationIds].join(' ').toLowerCase();
+      const haystack = [
+        a.id,
+        a.regionName,
+        a.nearestAsset?.asset.name ?? '',
+        a.nearestFireStation?.station.name ?? '',
+        ...a.observationIds,
+      ].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;

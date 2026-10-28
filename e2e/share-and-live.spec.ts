@@ -10,7 +10,7 @@ test('WhatsApp sharing opens a demo-marked message and logs it once', async ({ a
   });
   await page.goto('/#/alerts/ALT-OD-001');
   const panel = drawer(page);
-  await panel.getByRole('button', { name: 'Share with a field team via WhatsApp' }).click();
+  await panel.getByRole('button', { name: /Share with (Forest Team|a field team)/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Share with a field team' });
   await expect(dialog).toContainText('DEMO DATA, not a real alert');
 
@@ -19,8 +19,8 @@ test('WhatsApp sharing opens a demo-marked message and logs it once', async ({ a
   await expect(dialog).toBeHidden();
   await expect(panel).toBeVisible();
 
-  await panel.getByRole('button', { name: 'Share with a field team via WhatsApp' }).click();
-  await dialog.getByLabel('WhatsApp number (optional)').fill('+91 00000 00000');
+  await panel.getByRole('button', { name: /Share with (Forest Team|a field team)/ }).click();
+  await dialog.getByLabel(/WhatsApp number/).fill('+91 00000 00000');
   await dialog.getByRole('button', { name: 'Open in WhatsApp' }).click();
   await dialog.getByRole('button', { name: 'Open WhatsApp again' }).click();
 
